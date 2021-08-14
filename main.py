@@ -34,62 +34,90 @@ class Player:
 
 player = Player(map_size.x / 2, map_size.y / 2, vel=10, fov=math.pi / 2, angle=0, angle_change=math.pi / 2)
 
+rays = 360
+rad = 10
 
-def dda_ray_casting(rays, radius):
+distances = []
+
+
+for d in range(rays):
+    distances.append(pygame.math.Vector2(0))
+
+def dda_ray_casting(rays, radius, distances):
     start_pos = player.pos
     for ray in range(rays):
         ray_angle = (player.angle - player.fov / 2) + (ray / rays) * player.fov
         x_end = math.cos(ray_angle) * radius
         y_end = math.sin(ray_angle) * radius
-        end_pos = (pygame.math.Vector2(x_end, y_end) + start_pos)
-        direction2 = (pygame.math.Vector2(x_end, y_end) - start_pos)
-        direction = (pygame.math.Vector2(x_end, y_end) - start_pos).normalize()
+        # end_pos = (pygame.math.Vector2(x_end, y_end) + start_pos)
+        end_pos_norm = (pygame.math.Vector2(x_end, y_end) + start_pos).normalize()
+        # direction2 = (pygame.math.Vector2(x_end, y_end) - start_pos)
+        # direction = (pygame.math.Vector2(x_end, y_end) - start_pos).normalize()
 
-        pygame.draw.line(win,
-                         (0, 255, 0),
-                         (start_pos.x * tile_size.x, start_pos.y * tile_size.y),
-                         (end_pos.x * tile_size.x, end_pos.y * tile_size.y))
+        # pygame.draw.line(win,
+        #                  (0, 255, 0),
+        #                  (start_pos.x * tile_size.x, start_pos.y * tile_size.y),
+        #                  (end_pos.x * tile_size.x, end_pos.y * tile_size.y))
 
-        # step_size = pygame.math.Vector2(math.sqrt(1 + (end_pos.y / end_pos.x) * (end_pos.y / end_pos.x)),
-        #                                 math.sqrt(1 + (end_pos.x / end_pos.y) * (end_pos.x / end_pos.y)))
-        # map_coords = pygame.math.Vector2(int(start_pos.x), int(start_pos.y))
-        #
-        # ray_len = pygame.math.Vector2()
-        # step = pygame.math.Vector2()
-        #
-        # if end_pos.x < 0:
-        #     step.x = -1
-        #     ray_len.x = (start_pos.x - map_coords.x) * step_size.x
+        # pygame.draw.line(win,
+        #                  (0, 255, 0),
+        #                  (start_pos.x * tile_size.x, start_pos.y * tile_size.y),
+        #                  (direction2.x * tile_size.x, direction2.y * tile_size.y))
+
+
+        step_size = pygame.math.Vector2(math.sqrt(1 + (end_pos_norm.y / end_pos_norm.x) ** 28),
+                                        math.sqrt(1 + (end_pos_norm.x / end_pos_norm.y) ** 2))
+        # step_size = pygame.math.Vector2(math.sqrt(1 + (end_pos_norm.y / end_pos_norm.x) * (end_pos_norm.y / end_pos_norm.x)),
+        #                                 math.sqrt(1 + (end_pos_norm.x / end_pos_norm.y) * (end_pos_norm.x / end_pos_norm.y)))
+        map_coords = pygame.math.Vector2(int(start_pos.x), int(start_pos.y))
+
+        ray_len = pygame.math.Vector2()
+        step = pygame.math.Vector2()
+
+        if end_pos_norm.x < 0:
+            step.x = -1
+            ray_len.x = (start_pos.x - map_coords.x) * step_size.x
+        else:
+            step.x = 1
+            ray_len.x = ((map_coords.x + 1) - start_pos.x) * step_size.x
+
+        if end_pos_norm.y < 0:
+            step.y = -1
+            ray_len.y = (start_pos.y - map_coords.y) * step_size.y
+        else:
+            step.y = 1
+            ray_len.x = ((map_coords.y + 1) - start_pos.y) * step_size.y
+
+        hit_tile = False
+        distance = 0
+        while (not hit_tile) and (distance < radius):
+            if ray_len.x < ray_len.y:
+                map_coords.x += step.x
+                distance = ray_len.x
+                ray_len.x += step_size.x
+            else:
+                map_coords.y += step.y
+                distance = ray_len.y
+                ray_len.y += step_size.y
+
+            if 0 <= map_coords.x < map_size.x and 0 <= map_coords.y < map_size.y:
+                if game_map.get((map_coords.x, map_coords.y)):
+                    hit_tile = True
+
+        # if hit_tile:
+        #     distances[ray] = start_pos + end_pos * distance
         # else:
-        #     step.x = 1
-        #     ray_len.x = ((map_coords.x + 1) - start_pos.x) * step_size.x
-        #
-        # if end_pos.y < 0:
-        #     step.y = -1
-        #     ray_len.y = (start_pos.y - map_coords.y) * step_size.y
-        # else:
-        #     step.y = 1
-        #     ray_len.x = ((map_coords.y + 1) - start_pos.y) * step_size.y
-        #
-        # hit_tile = False
-        # distance = 0
-        # while (not hit_tile) and (distance < radius):
-        #     if ray_len.x < ray_len.y:
-        #         map_coords.x += step.x
-        #         distance = ray_len.x
-        #         ray_len.x += step_size.x
-        #     else:
-        #         map_coords.y += step.y
-        #         distance = ray_len.y
-        #         ray_len.y += step_size.y
-        #
-        #     if 0 <= map_coords.x < game_map.width and 0 <= map_coords.y < game_map.height:
-        #         if game_map.map.get((map_coords.x, map_coords.y)).blocks_movement:
-        #             hit_tile = True
-        #             distances[ray] = Distance(start_pos + end_pos * distance)
+        #     distances[ray] = rad + 1
+
+        if hit_tile:
+            distances[ray] = pygame.math.Vector2(start_pos + end_pos_norm * distance)
+        else:
+            distances[ray] = pygame.math.Vector2(0)
 
 
-def draw_on_update():
+    return distances
+
+def draw_on_update(distances):
     # win.fill((0, 0, 0))
 
     # for coords, tile in game_map.items():
@@ -97,6 +125,12 @@ def draw_on_update():
     #         x = coords[0] * tile_size.x
     #         y = coords[1] * tile_size.y
     #         pygame.draw.rect(win, (255, 255, 255), pygame.Rect((x, y), tile_size))
+
+    for distance in distances:
+        pygame.draw.line(win,
+                         (0, 255, 0),
+                         (player.pos.x * tile_size.x, player.pos.y * tile_size.y),
+                         (distance.x * tile_size.x, distance.y * tile_size.y))
 
     pygame.draw.rect(win, (255, 0, 0), pygame.Rect((player.pos.x * tile_size.x - tile_size.x / 2,
                                                     player.pos.y * tile_size.y - tile_size.y / 2),
@@ -185,7 +219,7 @@ while game_on:
             y = coords[1] * tile_size.y
             pygame.draw.rect(win, (255, 255, 255), pygame.Rect((x, y), tile_size))
 
-    dda_ray_casting(360, 10)
+    distances = dda_ray_casting(rays, rad, distances)
 
-    draw_on_update()
+    draw_on_update(distances)
 
