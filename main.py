@@ -7,7 +7,7 @@ win = pygame.display.set_mode((500, 500))
 
 clock = pygame.time.Clock()
 
-map_size = pygame.math.Vector2(20, 20)
+map_size = pygame.math.Vector2(30, 30)
 tile_size = pygame.math.Vector2(win.get_width() / map_size.x, win.get_height() / map_size.y)
 game_map = {}
 for y in range(int(map_size.y)):
@@ -34,14 +34,14 @@ class Player:
 
 player = Player(map_size.x / 2, map_size.y / 2, vel=10, fov=math.pi / 2, angle=0, angle_change=math.pi / 2)
 
-rays = 360
+rays = 90
 rad = 10
 
 distances = []
 
 
 for d in range(rays):
-    distances.append(pygame.math.Vector2(0))
+    distances.append(player.pos)
 
 def dda_ray_casting(rays, radius, distances):
     start_pos = player.pos
@@ -49,31 +49,18 @@ def dda_ray_casting(rays, radius, distances):
         ray_angle = (player.angle - player.fov / 2) + (ray / rays) * player.fov
         x_end = math.cos(ray_angle) * radius
         y_end = math.sin(ray_angle) * radius
-        # end_pos = (pygame.math.Vector2(x_end, y_end) + start_pos)
-        end_pos_norm = (pygame.math.Vector2(x_end, y_end) + start_pos).normalize()
-        # direction2 = (pygame.math.Vector2(x_end, y_end) - start_pos)
-        # direction = (pygame.math.Vector2(x_end, y_end) - start_pos).normalize()
+        end_pos_norm = (pygame.math.Vector2(x_end, y_end)).normalize()
 
-        # pygame.draw.line(win,
-        #                  (0, 255, 0),
-        #                  (start_pos.x * tile_size.x, start_pos.y * tile_size.y),
-        #                  (end_pos.x * tile_size.x, end_pos.y * tile_size.y))
+        if end_pos_norm.x == 0 or end_pos_norm.y == 0:
+            distances[ray] = pygame.math.Vector2(start_pos)
+            continue
 
-        # pygame.draw.line(win,
-        #                  (0, 255, 0),
-        #                  (start_pos.x * tile_size.x, start_pos.y * tile_size.y),
-        #                  (direction2.x * tile_size.x, direction2.y * tile_size.y))
-
-
-        step_size = pygame.math.Vector2(math.sqrt(1 + (end_pos_norm.y / end_pos_norm.x) ** 28),
+        step_size = pygame.math.Vector2(math.sqrt(1 + (end_pos_norm.y / end_pos_norm.x) ** 2),
                                         math.sqrt(1 + (end_pos_norm.x / end_pos_norm.y) ** 2))
-        # step_size = pygame.math.Vector2(math.sqrt(1 + (end_pos_norm.y / end_pos_norm.x) * (end_pos_norm.y / end_pos_norm.x)),
-        #                                 math.sqrt(1 + (end_pos_norm.x / end_pos_norm.y) * (end_pos_norm.x / end_pos_norm.y)))
-        map_coords = pygame.math.Vector2(int(start_pos.x), int(start_pos.y))
 
+        map_coords = pygame.math.Vector2(int(start_pos.x), int(start_pos.y))
         ray_len = pygame.math.Vector2()
         step = pygame.math.Vector2()
-
         if end_pos_norm.x < 0:
             step.x = -1
             ray_len.x = (start_pos.x - map_coords.x) * step_size.x
@@ -86,7 +73,7 @@ def dda_ray_casting(rays, radius, distances):
             ray_len.y = (start_pos.y - map_coords.y) * step_size.y
         else:
             step.y = 1
-            ray_len.x = ((map_coords.y + 1) - start_pos.y) * step_size.y
+            ray_len.y = ((map_coords.y + 1) - start_pos.y) * step_size.y
 
         hit_tile = False
         distance = 0
@@ -104,15 +91,10 @@ def dda_ray_casting(rays, radius, distances):
                 if game_map.get((map_coords.x, map_coords.y)):
                     hit_tile = True
 
-        # if hit_tile:
-        #     distances[ray] = start_pos + end_pos * distance
-        # else:
-        #     distances[ray] = rad + 1
-
         if hit_tile:
             distances[ray] = pygame.math.Vector2(start_pos + end_pos_norm * distance)
         else:
-            distances[ray] = pygame.math.Vector2(0)
+            distances[ray] = pygame.math.Vector2(start_pos)
 
 
     return distances
@@ -217,7 +199,7 @@ while game_on:
         if tile:
             x = coords[0] * tile_size.x
             y = coords[1] * tile_size.y
-            pygame.draw.rect(win, (255, 255, 255), pygame.Rect((x, y), tile_size))
+            pygame.draw.rect(win, (255, 255, 255), pygame.Rect((x, y), (math.ceil(tile_size.x), math.ceil(tile_size.y))))
 
     distances = dda_ray_casting(rays, rad, distances)
 
